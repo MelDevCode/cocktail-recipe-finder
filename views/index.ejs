@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Cocktail App</title>
+    <link rel="stylesheet" href="/styles/styles.css" />
+  </head>
+  <body>
+    <%- include("partials/header.ejs") %>
+
+    <h1>Welcome to Cocktail App</h1>
+    <p>Here you can find all you favorite cocktails.</p>
+    
+    <% if (data) { %>
+    <h3>Today's Drink: <%= data.strDrink %></h3>
+    
+    <img src="<%= data.strDrinkThumb %>" width="50" height="50">
+    <ul>
+        <li>Ingredients: <%= data.strMeasure1 %> <%= data.strIngredient1 %></li>
+        <li>Preparation: <%= data.strInstructions %></li>
+        <li>Glass: <%= data.strGlass %></li>
+    </ul>
+    <% } else { %>
+
+    <% } %>
+    <%- include("partials/footer.ejs") %>
+  </body>
+</html>
