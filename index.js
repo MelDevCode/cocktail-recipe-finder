@@ -9,6 +9,16 @@ app.set("view engine", "ejs");
 app.use(express.static("public"));
 app.use(express.urlencoded({extended: true}));
 
+function transformIdstoUrls(drink) {
+    const urls = [];
+    for (let i = 0; i < drink.length; i++) {
+        const id = drink[i].idDrink;
+        const url = `https://www.thecocktaildb.com/api/json/v1/1/lookup.php?i=${id}`;
+        urls.push(url);
+    }
+    return urls;
+};
+
 function transformDrink(drink) {
     const ingredients = [];
     for (let i = 1; i <= 15; i++) {
@@ -30,6 +40,31 @@ function transformDrink(drink) {
         ingredients: ingredients,
         image: drink.strDrinkThumb,
     }
+}
+
+// async function fetchAllData(urls)
+// {
+//     try {
+//         const promises = urls.map(url => axios.get(url));
+//         const responses = await Promise.all(promises);
+//         return responses;
+//     } catch (error) {
+//         console.error('One of the requests failed:', error)
+//     }
+// }
+
+async function fetchAllData(urls) {
+    const results = [];
+    for (const url of urls) {
+        try {
+            const response = await axios.get(url);
+            results.push(response);
+            await new Promise(resolve => setTimeout(resolve, 500)); // Wait 500ms between requests
+        } catch (error) {
+            console.error('Request failed for', url, error.message);
+        }
+    }
+    return results;
 }
 
 app.get("/", async (req, res) => {
@@ -68,39 +103,30 @@ app.get("/", async (req, res) => {
 });
 
 app.post("/recipe", async (req, res) => {
-    const cocktailName = req.body.dname;
-    //const cocktailCategory = req.body.category;
     //const cocktailIngredient = req.body.ingredient;
     //const cocktailType = req.body.type;
-    const resultByName = await axios.get(URL_link + "search.php?s=" + cocktailName);
-    const drinks = resultByName.data.drinks;
-    const cocktailByName = []
+    if (req.body.dname) {
+        const cocktailName = req.body.dname;
+        const resultByName = await axios.get(URL_link + "search.php?s=" + cocktailName);
+        const cocktailByName = resultByName.data.drinks.map(transformDrink);
 
-    for(let i = 0; i < drinks.length; i++) {
-        const oneDrink = drinks[i];
-        const ingredients = [];
+        res.render("search", { drinks: cocktailByName});
+    } else if (req.body.category) {
+        const cocktailCategory = req.body.category;
+        const resultByCategory = await axios.get(URL_link + "filter.php?c=" + cocktailCategory);
+        const urls = transformIdstoUrls(resultByCategory.data.drinks);
 
-        for (let i = 1; i <= 15; i++) {
-            const ingredient = oneDrink[`strIngredient${i}`];
-            const measure = oneDrink[`strMeasure${i}`];
-            if(ingredient) {
-                ingredients.push(`${measure || ""} ${ingredient}`.trim());
-            }
+        const responses = await fetchAllData(urls);
+
+        const cocktails = []
+        for(let i = 0; i< 12; i++) {
+            cocktails.push(responses[i].data.drinks)
         }
-        const drinkList = {
-            id: oneDrink.idDrink,
-            name: oneDrink.strDrink,
-            category: oneDrink.strCategory,
-            type: oneDrink.strAlcoholic,
-            mainIngredient: oneDrink.strIngredient1,
-            glassType: oneDrink.strGlass,
-            preparation: oneDrink.strInstructions,
-            ingredients: ingredients,
-            image: oneDrink.strDrinkThumb,
-        };
-        cocktailByName.push(drinkList);
+        
+        const cocktailByCategory = cocktails.flat().map(transformDrink);
+        res.render("search", {drinks: cocktailByCategory})
     }
-    res.render("search", { drinks: cocktailByName});
+    
 });
 
 app.post("/", (req, res) => {
